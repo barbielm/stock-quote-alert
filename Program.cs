@@ -11,15 +11,19 @@ string? API_KEY = Environment.GetEnvironmentVariable("API_KEY");
 
 if (API_KEY is null || USER_EMAIL is null || USER_PASSWORD is null)
 {
-    throw new ArgumentException("fill in your .env file accordingly", nameof(API_KEY));
+    throw new ArgumentException("fill in your .env file accordingly");
 }
 
 string ASSET = args[0];
 float SELLING_PRICE = float.Parse(args[1], CultureInfo.InvariantCulture.NumberFormat);
 float BUYING_PRICE = float.Parse(args[2], CultureInfo.InvariantCulture.NumberFormat);
+if (SELLING_PRICE <= BUYING_PRICE)
+{
+    throw new ArgumentException("selling price must always be higher than the buying price", nameof(SELLING_PRICE));
+}
 
+Functions.SendEmail(USER_EMAIL, USER_PASSWORD, "gabriel.meireles@ime.eb.br", "Teste", ASSET);
 
-Functions.CheckIfIntervalIsValid(BUYING_PRICE, SELLING_PRICE);
 string informations = await Functions.GetStockPrice(API_KEY);
 Console.WriteLine(informations);
 Console.ReadLine();
@@ -34,14 +38,6 @@ public class Functions
         var response = await httpClient.GetAsync(uri);
         var data = await response.Content.ReadAsStringAsync();
         return data;
-    }
-
-    public static void CheckIfIntervalIsValid(float buyingPrice, float sellingPrice)
-    {
-        if (sellingPrice <= buyingPrice)
-        {
-            throw new ArgumentException("selling price must always be higher than the buying price", nameof(sellingPrice));
-        }
     }
     public static void CheckBoundaries(int buyingPrice, int sellingPrice, int currentPrice)
     {
@@ -58,6 +54,16 @@ public class Functions
 
     public static void SendEmail(string userEmail, string password, string recipientEmail, string message, string subject)
     {
+        var email = new MimeMessage();
+        email.From.Add(MailboxAddress.Parse(userEmail));
+        email.To.Add(MailboxAddress.Parse(recipientEmail));
+        email.Subject = subject;
+        email.Body = new TextPart(TextFormat.Plain) { Text = message };
 
+        using var smtp = new SmtpClient();
+        smtp.Connect("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
+        smtp.Authenticate(userEmail, password);
+        smtp.Send(email);
+        smtp.Disconnect(true);
     }
 }
