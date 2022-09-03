@@ -1,5 +1,10 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿using System.Globalization;
+
+string ASSET = args[0];
+float SELLING_PRICE = float.Parse(args[1], CultureInfo.InvariantCulture.NumberFormat);
+float BUYING_PRICE = float.Parse(args[2], CultureInfo.InvariantCulture.NumberFormat);
 string API_KEY = "fe9b819b";
+Functions.checkIfIntervalIsValid(BUYING_PRICE, SELLING_PRICE);
 string informations = await Functions.GetStockPrice(API_KEY);
 Console.WriteLine(informations);
 Console.ReadLine();
@@ -15,7 +20,28 @@ public class Functions
         var data = await response.Content.ReadAsStringAsync();
         return data;
     }
-    public static void checkBoundaries()
+
+    public static void checkIfIntervalIsValid(float buyingPrice, float sellingPrice)
+    {
+        if (sellingPrice <= buyingPrice)
+        {
+            throw new ArgumentException("selling price must always be higher than the buying price", nameof(sellingPrice));
+        }
+    }
+    public static void checkBoundaries(int buyingPrice, int sellingPrice, int currentPrice)
+    {
+        if (currentPrice > sellingPrice)
+        {
+
+            Console.WriteLine("a ação deve ser vendida");
+        }
+        if (currentPrice < buyingPrice)
+        {
+            Console.WriteLine("a ação deve ser comprada");
+        }
+    }
+
+    public static void sendEmail()
     {
 
     }
