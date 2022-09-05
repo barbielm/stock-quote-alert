@@ -3,6 +3,8 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
 using MimeKit.Text;
+using Newtonsoft.Json;
+using stock_alert_quote.DeserializeClasses;
 
 DotNetEnv.Env.Load();
 string? USER_EMAIL = Environment.GetEnvironmentVariable("USER");
@@ -21,35 +23,36 @@ if (SELLING_PRICE <= BUYING_PRICE)
 {
     throw new ArgumentException("selling price must always be higher than the buying price", nameof(SELLING_PRICE));
 }
+string data = await Functions.GetStockData(API_KEY, ASSET);
+var obj = JsonConvert.DeserializeObject<Data>(data);
 
-Functions.SendEmail(USER_EMAIL, USER_PASSWORD, "gabriel.meireles@ime.eb.br", "Teste", ASSET);
+Console.WriteLine(obj.results[ASSET].price);
 
-string informations = await Functions.GetStockPrice(API_KEY);
-Console.WriteLine(informations);
-Console.ReadLine();
 
 public class Functions
 {
-    public static async Task<string> GetStockPrice(string apiKey)
+    public static async Task<string> GetStockData(string apiKey, string asset)
     {
-        string uri = $"https://api.hgbrasil.com/finance/stock_price?key={apiKey}&symbol=PETR4";
+        string uri = $"https://api.hgbrasil.com/finance/stock_price?key={apiKey}&symbol={asset}";
         var httpClient = new HttpClient();
         var request = new HttpRequestMessage();
         var response = await httpClient.GetAsync(uri);
-        var data = await response.Content.ReadAsStringAsync();
+        string data = await response.Content.ReadAsStringAsync();
         return data;
     }
-    public static void CheckBoundaries(int buyingPrice, int sellingPrice, int currentPrice)
+    public static string CheckBoundaries(int buyingPrice, int sellingPrice, int currentPrice)
     {
+        string message = "";
         if (currentPrice > sellingPrice)
         {
-
-            Console.WriteLine("a ação deve ser vendida");
+            message = "The current price of the asset is above the selling price. It is recommendable selling it.";
         }
-        if (currentPrice < buyingPrice)
+        else if (currentPrice < buyingPrice)
         {
-            Console.WriteLine("a ação deve ser comprada");
+            message = "The current price of the asset is below the buying price. It is recommendable buying it.";
         }
+
+        return message;
     }
 
     public static void SendEmail(string userEmail, string password, string recipientEmail, string message, string subject)
