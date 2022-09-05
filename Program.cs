@@ -92,7 +92,7 @@ public class Functions
 
     public static string GetClientEmail()
     {
-        string regex = @"^[^@\s]+@[^@\s]+\.(com|net|org|gov)$";
+        string regex = @"^[^@\s]+@[^@\s]+\.(com|net|org|gov|eb)(\.br|\.us)?$";
 
         Console.WriteLine("Type the email of the asset owner");
         string? email = Console.ReadLine();
