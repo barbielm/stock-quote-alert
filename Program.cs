@@ -3,6 +3,9 @@ using Newtonsoft.Json;
 using stock_alert_quote.DeserializeClasses;
 using stock_alert_quote.Services;
 
+
+int CHECK_INTERVAL = 5000;
+
 DotNetEnv.Env.Load();
 string? ADMIN_EMAIL = Environment.GetEnvironmentVariable("ADMIN");
 string? ADMIN_PASSWORD = Environment.GetEnvironmentVariable("PASSWORD");
@@ -47,7 +50,7 @@ while (true)
     {
         throw new ArgumentException("check the name of your asset", nameof(ASSET));
     }
-    await Task.Delay(5000);
+    await Task.Delay(CHECK_INTERVAL);
 }
 
 
