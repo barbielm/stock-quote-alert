@@ -1,12 +1,7 @@
 ﻿using System.Globalization;
-using System.Text.RegularExpressions;
-using MailKit.Net.Smtp;
-using MailKit.Security;
-using MimeKit;
-using MimeKit.Text;
 using Newtonsoft.Json;
 using stock_alert_quote.DeserializeClasses;
-
+using stock_alert_quote.Services;
 
 DotNetEnv.Env.Load();
 string? ADMIN_EMAIL = Environment.GetEnvironmentVariable("ADMIN");
@@ -26,25 +21,25 @@ if (SELLING_PRICE <= BUYING_PRICE)
     throw new ArgumentException("selling price must always be higher than the buying price", nameof(SELLING_PRICE));
 }
 
-string RECIPIENT_EMAIL = Functions.GetClientEmail();
+string RECIPIENT_EMAIL = ClientService.GetClientEmail();
 while (String.IsNullOrEmpty(RECIPIENT_EMAIL))
 {
     Console.WriteLine("Type a valid email address");
-    RECIPIENT_EMAIL = Functions.GetClientEmail();
+    RECIPIENT_EMAIL = ClientService.GetClientEmail();
 }
 
 while (true)
 {
-    string serializedData = await Functions.GetStockData(API_KEY, ASSET);
+    string serializedData = await AssetService.GetAssetData(API_KEY, ASSET);
     Data? deserializedData = JsonConvert.DeserializeObject<Data>(serializedData);
     float? currentPrice = deserializedData?.results?[ASSET].price;
     if (currentPrice.HasValue)
     {
-        string emailMessage = Functions.CheckBoundaries(BUYING_PRICE, SELLING_PRICE, currentPrice);
+        string emailMessage = AssetService.CheckPriceBoundaries(BUYING_PRICE, SELLING_PRICE, currentPrice);
         if (!String.IsNullOrEmpty(emailMessage))
         {
-            Functions.SendEmail(ADMIN_EMAIL, ADMIN_PASSWORD, RECIPIENT_EMAIL, emailMessage, $"{ASSET} price");
-            
+            EmailService.SendEmail(ADMIN_EMAIL, ADMIN_PASSWORD, RECIPIENT_EMAIL, emailMessage, $"{ASSET} price");
+            Console.WriteLine($"Current price: R$ {currentPrice}, your selected interval was: R$ {SELLING_PRICE} - R$ {BUYING_PRICE}.");
             Console.WriteLine($"An email was sent to {RECIPIENT_EMAIL}");
         }
     }
@@ -57,68 +52,3 @@ while (true)
 
 
 
-public class Functions
-{
-    public static async Task<string> GetStockData(string apiKey, string asset)
-    {
-        string uri = $"https://api.hgbrasil.com/finance/stock_price?key={apiKey}&symbol={asset}";
-        var httpClient = new HttpClient();
-        var request = new HttpRequestMessage();
-        var response = await httpClient.GetAsync(uri);
-        string data = await response.Content.ReadAsStringAsync();
-        return data;
-    }
-    public static string CheckBoundaries(float buyingPrice, float sellingPrice, float? currentPrice)
-    {
-        string emailMessage = "";
-        if (currentPrice > sellingPrice)
-        {
-            emailMessage = "The current price of the asset is above the selling price. It is recommendable selling it.";
-            Console.WriteLine("The current price of the asset is above the selling price");
-        }
-        else if (currentPrice < buyingPrice)
-        {
-            emailMessage = "The current price of the asset is below the buying price. It is recommendable buying it.";
-            Console.WriteLine("The current price of the asset is below the buying price");
-        }
-
-        else 
-        {
-            Console.WriteLine("The current price of the asset is within boundaries");
-        }
-        
-        return emailMessage;
-    }
-
-    public static string GetClientEmail()
-    {
-        string regex = @"^[^@\s]+@[^@\s]+\.(com|net|org|gov|eb)(\.br|\.us)?$";
-
-        Console.WriteLine("Type the email of the asset owner");
-        string? email = Console.ReadLine();
-        if ( !String.IsNullOrEmpty(email) && Regex.IsMatch(email, regex, RegexOptions.IgnoreCase))
-        {
-            return email;
-            
-        }
-
-        return "";   
-    }
-    
-    
-
-    public static void SendEmail(string userEmail, string password, string recipientEmail, string message, string subject)
-    {
-        var email = new MimeMessage();
-        email.From.Add(MailboxAddress.Parse(userEmail));
-        email.To.Add(MailboxAddress.Parse(recipientEmail));
-        email.Subject = subject;
-        email.Body = new TextPart(TextFormat.Plain) { Text = message };
-
-        using var smtp = new SmtpClient();
-        smtp.Connect("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-        smtp.Authenticate(userEmail, password);
-        smtp.Send(email);
-        smtp.Disconnect(true);
-    }
-}
